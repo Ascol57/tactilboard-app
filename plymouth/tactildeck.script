@@ -1,0 +1,16 @@
+// Charger l'image
+logo_image = Image("splash.png");
+
+// Récupérer les dimensions de l'écran
+screen_width = Window.GetWidth();
+screen_height = Window.GetHeight();
+
+// Calculer le centre
+logo_x = (screen_width / 2) - (logo_image.GetWidth() / 2);
+logo_y = (screen_height / 2) - (logo_image.GetHeight() / 2);
+
+// Créer le sprite (l'objet visuel)
+logo_sprite = Sprite(logo_image);
+logo_sprite.SetX(logo_x);
+logo_sprite.SetY(logo_y);
+logo_sprite.SetOpacity(1);
