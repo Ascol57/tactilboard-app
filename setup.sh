@@ -1,58 +1,72 @@
 #!/bin/bash
 
 # --- CONFIGURATION ---
-REPO_URL="REMPLACE_PAR_TON_URL_GITHUB"
-APP_DIR="nom-de-ton-repo"
+REPO_URL="https://github.com/Ascol57/tactilboard-app"
+APP_DIR="tactilboard-app"
 # ---------------------
 
-echo "🚀 Début de l'installation du Kiosk..."
+echo "🚀 Initialisation du Kiosk TactilDeck..."
 
-# 1. Mise à jour du système
+# 1. Mise à jour système
 sudo apt update && sudo apt upgrade -y
 
-# 2. Installation des dépendances (X11, Openbox, Node.js)
-echo "📦 Installation des paquets graphiques et Node.js..."
+# 2. Dépendances (X11, Openbox, Node.js)
 sudo apt install -y --no-install-recommends \
     xserver-xorg x11-xserver-utils xinit openbox \
     unclutter git curl lightdm
 
-# Installation de Node.js (Version 20.x pour 2026)
+# Node.js 20
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt install -y nodejs
 
-# 3. Clonage du dépôt et installation de l'app
-echo "📂 Récupération de l'application..."
+# 3. Installation de l'app
 cd /home/$USER
 git clone $REPO_URL
 cd $APP_DIR
 npm install
+npm run build # Premier build pour être prêt
 
-# 4. Configuration d'Openbox (Le gestionnaire de fenêtres)
-echo "⚙️ Configuration de l'interface..."
+# 4. Config Openbox avec mise à jour intelligente
 mkdir -p ~/.config/openbox
 cat <<EOF > ~/.config/openbox/autostart
-# Désactiver la mise en veille et le curseur
+# Optimisations écran
 xset s off
 xset s noblank
 xset -dpms
 unclutter -idle 0 &
 
-# Lancer l'app Electron (on force le mode sandbox-fix pour Linux)
 cd /home/$USER/$APP_DIR
-npm electron
+
+# --- MISE À JOUR AU BOOT ---
+# Attendre que le réseau soit là (max 20s) pour le git pull
+for i in {1..20}; do
+  if ping -c 1 8.8.8.8 &> /dev/null; then
+    echo "Réseau OK, mise à jour..."
+    git pull origin main
+    npm install # Au cas où tu as ajouté des dépendances
+    npm run build # Re-génère le dossier /dist
+    break
+  fi
+  sleep 1
+done
+
+# Lancer l'app Electron en mode production
+export NODE_ENV=production
+npm run electron -- --no-sandbox
 EOF
 
-# 5. Configuration du démarrage automatique (Auto-login)
-echo "👤 Configuration de l'auto-login..."
-sudo raspi-config nonint do_boot_behaviour B2 # B2 = Console Autologin
+# 5. Auto-login console
+sudo raspi-config nonint do_boot_behaviour B2 
 
-# 6. Lancement de X au démarrage via .bash_profile
+# 6. Lancement auto de X
+if ! grep -q "startx" ~/.bash_profile; then
 cat <<EOF >> ~/.bash_profile
 if [ -z "\$DISPLAY" ] && [ "\$XDG_VTNR" -eq 1 ]; then
   exec startx -- -nocursor
 fi
 EOF
+fi
 
-echo "✅ Installation terminée ! Le Pi va redémarrer dans 5 secondes."
-sleep 5
+echo "✅ Setup terminé. Reboot..."
+sleep 2
 sudo reboot
