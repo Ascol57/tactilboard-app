@@ -4,5 +4,5 @@ Description=Kiosk Boot Splash
 ModuleName=script
 
 [script]
-ImageDir=/home/constant/tactilboard-app/plymouth
-ScriptFile=/home/constant/tactilboard-app/plymouth/tactildeck.script
+ImageDir=/usr/share/plymouth/themes/tactildeck
+ScriptFile=/usr/share/plymouth/themes/tactildeck/tactildeck.script
