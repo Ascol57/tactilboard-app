@@ -48,9 +48,7 @@ fi
 # On nettoie la ligne pour éviter les doublons
 sudo sed -i 's/console=tty1//g' /boot/firmware/cmdline.txt
 
-cat <<EOF > /boot/firmware/cmdline.txt
-coherent_pool=1M 8250.nr_uarts=1 snd_bcm2835.enable_headphones=0 cgroup_disable=memory root=PARTUUID=45a25dd2-02 rootfstype=ext4 fsck.repair=yes rootwait quiet splash plymouth.ignore-serial-consoles logo.nologo vt.global_cursor_default=0 console=tty3
-EOF
+echo "coherent_pool=1M 8250.nr_uarts=1 snd_bcm2835.enable_headphones=1 root=PARTUUID=45a25dd2-02 rootfstype=ext4 fsck.repair=yes rootwait quiet splash plymouth.ignore-serial-consoles logo.nologo vt.global_cursor_default=0 console=tty3 video=HDMI-A-1:1024x600@60D" | sudo tee /boot/firmware/cmdline.txt
 
 # Régénérer l'image de boot (prend du temps)
 sudo plymouth-set-default-theme tactilboard
