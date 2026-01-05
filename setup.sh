@@ -31,73 +31,56 @@ mkdir -p ~/.config/openbox
 cat <<EOF > ~/.config/openbox/autostart
 #!/bin/bash
 
-# --- CONFIGURATION ---
-APP_DIR="/home/$USER/tactilboard-app"
-SPLASH_IMAGE="$APP_DIR/splash.png" # Assure-toi que ce fichier existe
+# 1. PARAMÈTRES ÉCRAN
+xset s off
+xset s noblank
+xset -dpms
+unclutter -idle 0 &
+
+# 2. ON DÉFINIT LE CHEMIN EN DUR
+# (Vérifie bien que ton dossier s'appelle exactement comme ça)
+REAL_PATH="/home/constant/$APP_DIR"
 export NODE_ENV=production
 
-# 1. OPTIMISATIONS ÉCRAN ET SOURIS
-# ---------------------------------------------------------
-xset s off          # Désactive l'économiseur d'écran
-xset s noblank      # Empêche l'écran de devenir noir
-xset -dpms          # Désactive la gestion d'énergie (veille)
-unclutter -idle 0 & # Cache le curseur de la souris immédiatement
-
-# 2. AFFICHAGE DU SPLASH SCREEN
-# ---------------------------------------------------------
-# On affiche l'image immédiatement pour couvrir le chargement
-if [ -f "$SPLASH_IMAGE" ]; then
-    feh --bg-fill "$SPLASH_IMAGE" &
-else
-    # Si pas d'image, on met un fond noir pour faire propre
-    hsetroot -solid "#000000" &
+# 3. AFFICHAGE DU SPLASH (si présent)
+if [ -f "$REAL_PATH/splash.png" ]; then
+    feh --bg-fill "$REAL_PATH/splash.png" &
 fi
 
-# 3. VÉRIFICATION DES MISES À JOUR (INTELLIGENTE)
-# ---------------------------------------------------------
-cd "$APP_DIR"
+# 4. ENTRER DANS LE DOSSIER
+cd "$REAL_PATH" || exit
 
-# Attendre que le réseau soit prêt (max 15 secondes)
-for i in {1..15}; do
+# 5. VÉRIFICATION RÉSEAU ET MAJ
+for i in {1..10}; do
     if ping -c 1 8.8.8.8 &> /dev/null; then
-        echo "🌐 Réseau détecté. Vérification GitHub..."
-        
-        # Récupérer les infos du dépôt sans télécharger les fichiers
+        echo "🌐 Internet OK"
         git fetch origin main
-        
-        # Comparer la version locale et la version distante
         LOCAL=$(git rev-parse HEAD)
         REMOTE=$(git rev-parse @{u})
-
         if [ "$LOCAL" != "$REMOTE" ]; then
-            echo "📥 Mise à jour trouvée. Téléchargement..."
             git pull origin main
-            
-            # On ne réinstalle et re-build que s'il y a du nouveau
             npm install
             npm run build
-        else
-            echo "✅ Déjà à jour."
         fi
         break
     fi
-    echo "⏳ Attente réseau... ($i)"
     sleep 1
 done
 
-# 4. LANCEMENT DE L'APPLICATION ELECTRON
-# ---------------------------------------------------------
+# 6. LANCEMENT SÉCURISÉ
 echo "🚀 Lancement de TactilDeck..."
 
-# On lance l'application. 
-# Le flag --no-sandbox est souvent requis sur les architectures ARM (Raspberry Pi)
-npm run electron -- --no-sandbox
+# On s'assure que le dossier dist existe avant de lancer
+if [ ! -d "dist" ]; then
+    npm run build
+fi
 
-# 5. NETTOYAGE (Optionnel)
-# ---------------------------------------------------------
-# Une fois l'application fermée (si on utilise le raccourci de secours)
-pkill feh
-openbox --exit
+# Boucle pour relancer l'app si elle crash
+while true; do
+    /usr/bin/npm run electron -- --no-sandbox
+    echo "App fermée, relance dans 5s..."
+    sleep 5
+done
 EOF
 
 # 5. Auto-login console
