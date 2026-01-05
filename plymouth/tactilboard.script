@@ -1,24 +1,25 @@
-// --- Configuration des Z-Index ---
-// Fond = 1, Logo = 10, Barre Fond = 20, Barre Remplissage = 30
+// --- Initialisation du fond ---
+Window.SetBackgroundTopColor(0, 0, 0);
+Window.SetBackgroundBottomColor(0, 0, 0);
+
+// --- Z-Index ---
 Z_INDEX_LOGO = 10;
 Z_INDEX_BARRE_FOND = 20;
 Z_INDEX_BARRE_PLEINE = 30;
 
-// --- Affichage du Logo ---
+// --- Logo ---
 logo_image = Image("logo.png");
 logo_sprite = Sprite(logo_image);
 logo_sprite.SetX(Window.GetWidth() / 2 - logo_image.GetWidth() / 2);
-logo_sprite.SetY(Window.GetHeight() / 3 - logo_image.GetHeight() / 2); // Remonté un peu pour l'esthétique
+logo_sprite.SetY(Window.GetHeight() / 3 - logo_image.GetHeight() / 2);
 logo_sprite.SetZ(Z_INDEX_LOGO);
 
-// --- Configuration de la Barre ---
+// --- Barre de progression ---
 bar_image = Image("progress_bar.png");
 bar_sprite = Sprite(bar_image);
-
 bar_fill_image = Image("progress_bar_fill.png");
 bar_fill_sprite = Sprite(); 
 
-// Positionner la barre (50px sous le logo)
 bar_x = Window.GetWidth() / 2 - bar_image.GetWidth() / 2;
 bar_y = logo_sprite.GetY() + logo_image.GetHeight() + 50;
 
@@ -30,23 +31,21 @@ bar_fill_sprite.SetX(bar_x);
 bar_fill_sprite.SetY(bar_y);
 bar_fill_sprite.SetZ(Z_INDEX_BARRE_PLEINE);
 
-// Initialiser la barre de remplissage à 1% pour qu'elle existe visuellement au départ
+// Initialisation à 1%
 bar_fill_sprite.SetImage(bar_fill_image.Scale(1, bar_fill_image.GetHeight()));
 
-// --- Fonction de Progression ---
+// --- FONCTIONS CORRIGÉES (Utiliser 'fun' et non 'function') ---
 fun progress_callback (duration, progress) {
-  // Plymouth envoie parfois des valeurs bizarres, on sature entre 0.01 et 1
   if (progress < 0.01) progress = 0.01;
   if (progress > 1) progress = 1;
-
   new_width = bar_fill_image.GetWidth() * progress;
-  
-  // On met à jour l'image mise à l'échelle
   bar_fill_sprite.SetImage(bar_fill_image.Scale(new_width, bar_fill_image.GetHeight()));
 }
 
-Plymouth.SetBootProgressFunction(progress_callback);
+fun refresh_callback () {
+    // Vide pour cacher les éléments par défaut
+}
 
-// --- Cacher les 3 points ---
-function refresh_callback () {}
-Plymouth.SetRefreshFunction (refresh_callback);
+// Enregistrement des fonctions
+Plymouth.SetBootProgressFunction(progress_callback);
+Plymouth.SetRefreshFunction(refresh_callback);
