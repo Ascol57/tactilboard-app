@@ -510,6 +510,12 @@ const createActionHandler = (actionConfig) => {
           showSettingsPanel.value = true;
         }
       };
+
+    case 'reconnect-server':
+      return () => {
+        console.log('🔄 Tentative de reconnexion au serveur');
+        connectToServer();
+      };
       
     default:
       return () => console.log('Action inconnue:', actionConfig.type);
