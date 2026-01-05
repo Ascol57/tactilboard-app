@@ -36,10 +36,8 @@ npm run build
 # ---------------------------------------------------------
 echo "🎨 Configuration du thème de boot..."
 
-# Remplacer l'image du thème par défaut 'pix' par la tienne
-if [ -f "$APP_DIR/splash.png" ]; then
-    sudo cp "$APP_DIR/splash.png" /usr/share/plymouth/themes/pix/splash.png
-fi
+sudo mkdir -p /usr/share/plymouth/themes/tactildeck
+sudo cp -r $APP_DIR/plymouth/* /usr/share/plymouth/themes/tactildeck/
 
 # Forcer le chargement des pilotes vidéo au démarrage (très important pour Plymouth)
 if ! grep -q "vc4" /etc/initramfs-tools/modules; then
@@ -53,7 +51,7 @@ CUR_CMD=$(cat /boot/firmware/cmdline.txt)
 echo "$CUR_CMD quiet splash plymouth.ignore-serial-consoles logo.nologo vt.global_cursor_default=0 console=tty3" | sudo tee /boot/firmware/cmdline.txt
 
 # Régénérer l'image de boot (prend du temps)
-sudo plymouth-set-default-theme pix
+sudo plymouth-set-default-theme tactildeck
 sudo update-initramfs -u
 
 # 4. CONFIGURATION DE L'AUTOSTART (OPENBOX + FEH)
