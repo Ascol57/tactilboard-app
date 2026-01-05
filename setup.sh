@@ -2,109 +2,111 @@
 
 # --- CONFIGURATION ---
 REPO_URL="https://github.com/Ascol57/tactilboard-app"
-APP_DIR="tactilboard-app"
+APP_DIR_NAME="tactilboard-app"
+APP_DIR="/home/$USER/$APP_DIR_NAME"
 # ---------------------
 
-echo "🚀 Initialisation du Kiosk TactilDeck..."
+echo "🚀 Déploiement du Kiosk TactilDeck (Boot + Splash + App)..."
 
-# 1. Mise à jour système
+# 1. MISE À JOUR ET DÉPENDANCES
+# ---------------------------------------------------------
 sudo apt update && sudo apt upgrade -y
-
-# 2. Dépendances (X11, Openbox, Node.js)
 sudo apt install -y --no-install-recommends \
     xserver-xorg x11-xserver-utils xinit openbox \
-    unclutter git curl lightdm
+    unclutter git curl lightdm feh \
+    plymouth plymouth-themes initramfs-tools
 
-# Node.js 20
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt install -y nodejs
+# Installation Node.js 20
+if ! command -v node &> /dev/null; then
+    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+    sudo apt install -y nodejs
+fi
 
-# 3. Installation de l'app
+# 2. INSTALLATION DE L'APPLICATION
+# ---------------------------------------------------------
 cd /home/$USER
-git clone $REPO_URL
-cd $APP_DIR
+if [ ! -d "$APP_DIR" ]; then
+    git clone $REPO_URL
+fi
+cd "$APP_DIR"
 npm install
-npm run build # Premier build pour être prêt
+npm run build
 
-# 4. Config Openbox avec mise à jour intelligente
+# 3. CONFIGURATION DU THÈME DE BOOT (PLYMOUTH)
+# ---------------------------------------------------------
+echo "🎨 Configuration du thème de boot..."
+
+# Remplacer l'image du thème par défaut 'pix' par la tienne
+if [ -f "$APP_DIR/splash.png" ]; then
+    sudo cp "$APP_DIR/splash.png" /usr/share/plymouth/themes/pix/splash.png
+fi
+
+# Forcer le chargement des pilotes vidéo au démarrage (très important pour Plymouth)
+if ! grep -q "vc4" /etc/initramfs-tools/modules; then
+    echo -e "vc4\ndrm" | sudo tee -a /etc/initramfs-tools/modules
+fi
+
+# Configurer cmdline.txt pour cacher le texte (quiet splash)
+# On nettoie la ligne pour éviter les doublons
+sudo sed -i 's/console=tty1//g' /boot/firmware/cmdline.txt
+CUR_CMD=$(cat /boot/firmware/cmdline.txt)
+echo "$CUR_CMD quiet splash plymouth.ignore-serial-consoles logo.nologo vt.global_cursor_default=0 console=tty3" | sudo tee /boot/firmware/cmdline.txt
+
+# Régénérer l'image de boot (prend du temps)
+sudo plymouth-set-default-theme pix
+sudo update-initramfs -u
+
+# 4. CONFIGURATION DE L'AUTOSTART (OPENBOX + FEH)
+# ---------------------------------------------------------
+echo "⚙️ Configuration de l'autostart..."
 mkdir -p ~/.config/openbox
 cat <<EOF > ~/.config/openbox/autostart
 #!/bin/bash
+# 1. Affichage immédiat du Splash FEH pour la transition
+feh --bg-fill "$APP_DIR/splash.png" &
 
-# 1. PARAMÈTRES ÉCRAN
-xset s off
+# 2. Paramètres écran
+xset s off -dpms
 xset s noblank
-xset -dpms
 unclutter -idle 0 &
 
-# 2. CONFIGURATION DES CHEMINS
-# On définit clairement le nom du dossier ici
-APP_NAME="tactilboard-app"
-REAL_PATH="/home/constant/$APP_NAME"
-export NODE_ENV=production
-
-# 3. AFFICHAGE DU SPLASH INTERMÉDIAIRE (feh)
-# Il reste à l'écran pendant les mises à jour et le build
-if [ -f "$REAL_PATH/splash.png" ]; then
-    feh --bg-fill "$REAL_PATH/splash.png" &
-fi
-
-# 4. ENTRER DANS LE DOSSIER
-cd "$REAL_PATH" || exit
-
-# 5. VÉRIFICATION RÉSEAU ET MAJ
-for i in {1..10}; do
-    if ping -c 1 8.8.8.8 &> /dev/null; then
-        echo "🌐 Internet OK"
-        git fetch origin main
-        LOCAL=$(git rev-parse HEAD)
-        REMOTE=$(git rev-parse @{u})
-
-        if [ "$LOCAL" != "$REMOTE" ]; then
-            echo "📥 Mise à jour détectée. Téléchargement..."
-            git pull origin main
-            npm install
-            npm run build
-            
-            # --- MISE À JOUR PLYMOUTH ---
-            # Si le logo ou le thème dans /plymouth a changé, 
-            # on l'injecte dans le boot pour le prochain démarrage.
-            echo "🎨 Mise à jour du splash screen système (Plymouth)..."
-            sudo update-initramfs -u
-        fi
-        break
+# 3. Update intelligent
+cd "$APP_DIR"
+if ping -c 1 8.8.8.8 &> /dev/null; then
+    git fetch origin main
+    LOCAL=\$(git rev-parse HEAD)
+    REMOTE=\$(git rev-parse @{u})
+    if [ "\$LOCAL" != "\$REMOTE" ]; then
+        git pull origin main
+        npm install
+        npm run build
     fi
-    sleep 1
-done
-
-# 6. LANCEMENT SÉCURISÉ D'ELECTRON
-echo "🚀 Lancement de TactilDeck..."
-
-# Sécurité : si pour une raison x le dossier dist est absent, on build
-if [ ! -d "dist" ]; then
-    npm run build
 fi
 
-# Boucle pour relancer l'app si elle crash ou est fermée
-while true; do
-    /usr/bin/npm run electron -- --no-sandbox
-    echo "App fermée, relance dans 5s..."
-    sleep 5
-done
+# 4. Lancement App
+export NODE_ENV=production
+npm run electron -- --no-sandbox
 EOF
+chmod +x ~/.config/openbox/autostart
 
-# 5. Auto-login console
-sudo raspi-config nonint do_boot_behaviour B2 
+# 5. CONFIGURATION DU .BASH_PROFILE ET AUTO-LOGIN
+# ---------------------------------------------------------
+echo "👤 Configuration du login et de X11..."
 
-# 6. Lancement auto de X
-if ! grep -q "startx" ~/.bash_profile; then
-cat <<EOF >> ~/.bash_profile
+# On s'assure que .bash_profile lance startx proprement
+cat <<EOF > ~/.bash_profile
+# Lancement automatique de l'interface graphique sur TTY1
 if [ -z "\$DISPLAY" ] && [ "\$XDG_VTNR" -eq 1 ]; then
   exec startx -- -nocursor
 fi
 EOF
-fi
 
-echo "✅ Setup terminé. Reboot..."
-sleep 2
+# Désactiver le message de bienvenue (IP address, etc.) pour un boot propre
+touch ~/.hushlogin
+
+# Activer l'Auto-login console via raspi-config
+sudo raspi-config nonint do_boot_behaviour B2
+
+echo "✅ Tout est prêt ! Redémarrage pour appliquer le thème..."
+sleep 3
 sudo reboot
