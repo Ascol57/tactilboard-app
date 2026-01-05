@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=TactilDeck
+Description=Kiosk Boot Splash
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/tactilboard
+ScriptFile=/usr/share/plymouth/themes/tactilboard/tactilboard.script

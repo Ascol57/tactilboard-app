@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# curl -sSL https://raw.githubusercontent.com/Ascol57/tactilboard-app/master/setup.sh | bash
 # --- CONFIGURATION ---
 REPO_URL="https://github.com/Ascol57/tactilboard-app"
 APP_DIR_NAME="tactilboard-app"
@@ -36,8 +36,8 @@ npm run build
 # ---------------------------------------------------------
 echo "🎨 Configuration du thème de boot..."
 
-sudo mkdir -p /usr/share/plymouth/themes/tactildeck
-sudo cp -r $APP_DIR/plymouth/* /usr/share/plymouth/themes/tactildeck/
+sudo mkdir -p /usr/share/plymouth/themes/tactilboard
+sudo cp -r $APP_DIR/plymouth/* /usr/share/plymouth/themes/tactilboard/
 
 # Forcer le chargement des pilotes vidéo au démarrage (très important pour Plymouth)
 if ! grep -q "vc4" /etc/initramfs-tools/modules; then
@@ -51,7 +51,7 @@ CUR_CMD=$(cat /boot/firmware/cmdline.txt)
 echo "$CUR_CMD quiet splash plymouth.ignore-serial-consoles logo.nologo vt.global_cursor_default=0 console=tty3" | sudo tee /boot/firmware/cmdline.txt
 
 # Régénérer l'image de boot (prend du temps)
-sudo plymouth-set-default-theme tactildeck
+sudo plymouth-set-default-theme tactilboard
 sudo update-initramfs -u
 
 # 4. CONFIGURATION DE L'AUTOSTART (OPENBOX + FEH)
