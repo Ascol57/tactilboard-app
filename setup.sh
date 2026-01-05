@@ -69,16 +69,42 @@ xset s noblank
 unclutter -idle 0 &
 
 # 3. Update intelligent
-cd "$APP_DIR"
-if ping -c 1 8.8.8.8 &> /dev/null; then
-    git fetch origin main
-    LOCAL=\$(git rev-parse HEAD)
-    REMOTE=\$(git rev-parse @{u})
-    if [ "\$LOCAL" != "\$REMOTE" ]; then
+echo "🌐 Attente du réseau (max 30s)..."
+CONNECTED=false
+for i in {1..30}; do
+    if ping -c 1 8.8.8.8 &> /dev/null; then
+        echo "✅ Réseau détecté à l'essai $i"
+        CONNECTED=true
+        break
+    fi
+    sleep 1
+done
+
+if [ "$CONNECTED" = true ]; then
+    echo "🔍 Vérification des mises à jour sur GitHub..."
+    git remote update > /dev/null
+    
+    LOCAL=$(git rev-parse HEAD)
+    REMOTE=$(git rev-parse origin/main)
+
+    if [ "$LOCAL" != "$REMOTE" ]; then
+        echo "📥 Mise à jour détectée : Téléchargement et Build..."
         git pull origin main
         npm install
+        
+        # Mise à jour du thème Plymouth
+        if [ -d "$APP_DIR/plymouth" ]; then
+            sudo cp -r "$APP_DIR/plymouth/"* /usr/share/plymouth/themes/tactilboard/
+            # On ne bloque pas le démarrage pour l'initramfs, on le fait en tâche de fond
+            sudo update-initramfs -u & 
+        fi
+        
         npm run build
+    else
+        echo "✨ Déjà à jour."
     fi
+else
+    echo "⚠️ Pas de réseau après 30s. Lancement du build local."
 fi
 
 # 4. Lancement App
