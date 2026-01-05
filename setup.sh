@@ -37,12 +37,14 @@ xset s noblank
 xset -dpms
 unclutter -idle 0 &
 
-# 2. ON DÉFINIT LE CHEMIN EN DUR
-# (Vérifie bien que ton dossier s'appelle exactement comme ça)
-REAL_PATH="/home/constant/$APP_DIR"
+# 2. CONFIGURATION DES CHEMINS
+# On définit clairement le nom du dossier ici
+APP_NAME="tactilboard-app"
+REAL_PATH="/home/constant/$APP_NAME"
 export NODE_ENV=production
 
-# 3. AFFICHAGE DU SPLASH (si présent)
+# 3. AFFICHAGE DU SPLASH INTERMÉDIAIRE (feh)
+# Il reste à l'écran pendant les mises à jour et le build
 if [ -f "$REAL_PATH/splash.png" ]; then
     feh --bg-fill "$REAL_PATH/splash.png" &
 fi
@@ -57,25 +59,33 @@ for i in {1..10}; do
         git fetch origin main
         LOCAL=$(git rev-parse HEAD)
         REMOTE=$(git rev-parse @{u})
+
         if [ "$LOCAL" != "$REMOTE" ]; then
+            echo "📥 Mise à jour détectée. Téléchargement..."
             git pull origin main
             npm install
             npm run build
+            
+            # --- MISE À JOUR PLYMOUTH ---
+            # Si le logo ou le thème dans /plymouth a changé, 
+            # on l'injecte dans le boot pour le prochain démarrage.
+            echo "🎨 Mise à jour du splash screen système (Plymouth)..."
+            sudo update-initramfs -u
         fi
         break
     fi
     sleep 1
 done
 
-# 6. LANCEMENT SÉCURISÉ
+# 6. LANCEMENT SÉCURISÉ D'ELECTRON
 echo "🚀 Lancement de TactilDeck..."
 
-# On s'assure que le dossier dist existe avant de lancer
+# Sécurité : si pour une raison x le dossier dist est absent, on build
 if [ ! -d "dist" ]; then
     npm run build
 fi
 
-# Boucle pour relancer l'app si elle crash
+# Boucle pour relancer l'app si elle crash ou est fermée
 while true; do
     /usr/bin/npm run electron -- --no-sandbox
     echo "App fermée, relance dans 5s..."
