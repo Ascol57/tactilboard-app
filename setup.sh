@@ -29,24 +29,6 @@ cd "$APP_DIR"
 npm install
 npm run build # On build ici, pendant le setup, pour que ce soit prêt au premier boot
 
-# 3. CONFIGURATION PLYMOUTH (BOOT THEME)
-echo "🎨 Configuration du thème Plymouth..."
-sudo mkdir -p /usr/share/plymouth/themes/tactilboard
-sudo cp -r $APP_DIR/plymouth/* /usr/share/plymouth/themes/tactilboard/
-
-# Modules Vidéo
-if ! grep -q "vc4" /etc/initramfs-tools/modules; then
-    echo -e "vc4\ndrm" | sudo tee -a /etc/initramfs-tools/modules
-fi
-
-# RÉCUPÉRATION DU VRAI PARTUUID (Évite de bricker le boot)
-REAL_PARTUUID=$(findmnt -n -o SOURCE / | cut -d'=' -f2)
-
-# Écriture propre du cmdline.txt
-echo "coherent_pool=1M 8250.nr_uarts=1 snd_bcm2835.enable_headphones=1 root=PARTUUID=$REAL_PARTUUID rootfstype=ext4 fsck.repair=yes rootwait quiet splash plymouth.ignore-serial-consoles logo.nologo vt.global_cursor_default=0 console=tty3 video=1024x600@60" | sudo tee /boot/firmware/cmdline.txt
-
-sudo plymouth-set-default-theme tactilboard
-sudo update-initramfs -u
 
 # 4. DROITS SUDO POUR L'AUTOSTART
 echo "🔓 Autorisation sudo pour les updates en arrière-plan..."
@@ -84,10 +66,6 @@ cd "\$APP_DIR"
             git pull origin main
             npm install
             npm run build
-            if [ -d "\$APP_DIR/plymouth" ]; then
-                sudo cp -r "\$APP_DIR/plymouth/"* /usr/share/plymouth/themes/tactilboard/
-                sudo update-initramfs -u & 
-            fi
         fi
     fi
 ) &
