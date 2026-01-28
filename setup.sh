@@ -11,8 +11,8 @@ echo "🚀 Déploiement du Kiosk TactilDeck..."
 sudo apt update && sudo apt upgrade -y
 sudo apt install -y --no-install-recommends \
     xserver-xorg x11-xserver-utils xinit openbox \
-    unclutter git curl lightdm feh \
-    plymouth plymouth-themes initramfs-tools
+    unclutter git curl feh \
+    libnss3 libgtk-3-0 libasound2 libgbm1
 
 # Installation Node.js 20
 if ! command -v node &> /dev/null; then
